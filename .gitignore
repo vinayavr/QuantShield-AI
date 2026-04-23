@@ -1,2 +1,6 @@
 node_modules/
 QuantShield-AI-backup/
+QuantShield-AI-backup-safe/
+__pycache__/
+*.pyc
+.env.local
