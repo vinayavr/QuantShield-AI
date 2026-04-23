@@ -1,230 +1,77 @@
-QuantShield AI – Backend (ML + API)
+# QuantShield AI
 
-QuantShield AI is a machine learning-based backend system that analyzes financial market data to:
+QuantShield AI is a portfolio recommendation prototype that combines a Next.js investor-facing interface with a FastAPI analytics service. The project now presents itself more like a legitimate fintech analysis tool by surfacing methodology, data freshness, scenario views, and explicit limitations instead of behaving like a throwaway demo.
 
-- Predict market risk (HIGH / LOW)
-- Predict market direction (UP / DOWN)
-- Suggest investment vs holding amount
-- Provide portfolio allocation
-- Recommend sectors and SIP plans
-- Generate chart-ready data for future frontend
+## What improved
 
----
+- A proper landing page and onboarding flow replaced the automatic redirect into the app.
+- The frontend now communicates trust markers, analysis scope, and suitability limits more clearly.
+- Empty states across the dashboard, explainability, and scenario views now guide the user back into the correct workflow.
+- The FastAPI service now exposes clearer health metadata, request logging, a stable version header, and configurable CORS.
+- The README and scripts now reflect a real setup workflow rather than the default scaffold text.
 
-CURRENT STATUS
+## Stack
 
-Machine Learning Model Completed
-FastAPI Backend Completed
-Frontend (Next.js) – In Progress
+- Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS 4, Chart.js
+- Backend: FastAPI, Pandas, NumPy, yfinance, pandas-datareader, scikit-learn
+- Market inputs: Yahoo Finance and FRED
 
----
+## Project structure
 
-PROJECT STRUCTURE
+```text
+app/        Next.js app router frontend
+backend/    FastAPI API and portfolio logic
+public/     Static assets
+```
 
-backend/
-│
-├── model.py        # ML model + feature engineering + recommendation logic
-├── main.py         # FastAPI API layer
-├── model.pkl       # Trained model (generated after running)
-├── scaler.pkl      # Scaler (generated after running)
+## Run locally
 
----
+### 1. Frontend
 
-REQUIREMENTS
+```bash
+npm install
+npm run dev
+```
 
-Install Python (recommended: 3.10 or above)
+The frontend runs on `http://localhost:3000`.
 
-Install dependencies
+Optional environment variable:
 
-Run in PowerShell / Terminal / Git Bash
+```bash
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
 
-pip install pandas numpy yfinance requests joblib xgboost scikit-learn ta fastapi uvicorn
+### 2. Backend
 
----
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
 
-HOW TO RUN (STEP-BY-STEP)
+The backend runs on `http://127.0.0.1:8000`.
 
----
+Optional backend environment variables:
 
-Step 1: Clone the Project
+```bash
+QUANTSHIELD_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+LOG_LEVEL=INFO
+```
 
-Run in Git Bash / Terminal / PowerShell
+## Quality checks
 
-git clone https://github.com/your-username/QuantShield-AI.git
-cd QuantShield-AI/backend
+```bash
+npm run lint
+npm run typecheck
+```
 
----
+## Product positioning
 
-Step 2: Train the Model
+QuantShield AI should be framed as a decision-support prototype. It provides portfolio screening, allocation logic, and explanatory outputs, but it does not:
 
-Run in PowerShell / Terminal
+- execute trades
+- perform KYC or suitability checks
+- replace licensed financial advice
+- guarantee outcomes
 
-python model.py
-
-This will:
-
-- Fetch real NIFTY 50 & India VIX data
-- Fetch macroeconomic data (FRED API)
-- Train the ML model
-- Save:
-  - "model.pkl"
-  - "scaler.pkl"
-
----
-
-Step 3: Start API Server
-
- Run in PowerShell / Terminal
-
-uvicorn main:app --reload
-
----
-
-Step 4: Test API
-
-Open browser:
-
-http://127.0.0.1:8000/docs
-
-You will see Swagger UI
-You can test "/recommend" directly
-
----
-
-API DETAILS
-
-Endpoint:
-
-POST /recommend
-
----
-
-Request Body:
-
-{
-  "amount": 10000,
-  "time_horizon": "medium",
-  "risk_preference": "low"
-}
-
----
-
-Response (Sample):
-
-{
-  "summary": {
-    "market_condition": "LOW RISK",
-    "market_direction": "UP",
-    "confidence_percent": 60.5
-  },
-  "investment": {
-    "recommended_investment": 6500,
-    "recommended_hold": 3500
-  },
-  "portfolio_allocation": {
-    "equity": 60,
-    "debt": 25,
-    "cash": 15
-  },
-  "sector_recommendation": ["IT", "Banking", "Auto"]
-}
-
----
-
-DATA SOURCES
-
-Market Data (Real)
-
-- NIFTY 50 → "^NSEI"
-- India VIX → "^INDIAVIX"
-
-Macroeconomic Data
-
-- CPI (Inflation)
-- IIP (Industrial Production)
-- USD/INR Exchange Rate
-
----
-
-MODEL FEATURES
-
-- Returns & volatility
-- Moving averages (MA10, MA20)
-- RSI (momentum indicator)
-- VIX (market fear indicator)
-- Macroeconomic indicators
-
----
-
-IMPORTANT NOTES
-
-- Predictions are probabilistic (not guaranteed)
-- Model is designed for decision support
-- Not financial advice
-
----
-
-TROUBLESHOOTING
-
----
-
-FRED API Error
-
-If you see:
-
-FRED FAILED → USING FALLBACK
-
-Cause:
-
-- API issue / invalid key
-
-Fix:
-
-- Get API key: https://fred.stlouisfed.org/
-- Replace in "model.py"
-
----
-
-Model not saving
-
-Check if these files are created:
-
-model.pkl
-scaler.pkl
-
----
-
-API not running
-
-Ensure:
-
-uvicorn main:app --reload
-
-
-
-RUN ORDER (IMPORTANT)
-
-1. git clone
-2. cd backend
-3. python model.py
-4. uvicorn main:app --reload
-5. open /docs in browser
-
----
-
-NEXT STEPS (PLANNED)
-
-- Build Next.js frontend dashboard
-- Add real-time predictions
-- Add news sentiment analysis
-- Deploy backend (Render / AWS)
-
-
-AUTHORS
-
-Vinaya V R
-B.Tech CSE (FinTech)
-Akshaya G
-B.Tech CSE
-
-Backend complete — frontend coming soon!
+That framing is important if you want the product to feel credible and industry-aware.
