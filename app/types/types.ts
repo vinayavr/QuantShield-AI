@@ -54,6 +54,7 @@ export type RecommendResponse = {
     headline: string;
     market_condition?: string;
     confidence?: string;
+    confidence_percent?: number;
   };
 
   risk_score: number;

@@ -1,163 +1,133 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import {
-  ArrowRight,
   BadgeCheck,
-  BrainCircuit,
+  ChevronRight,
+  Radar,
   ShieldCheck,
   TrendingUp,
 } from "lucide-react";
+import { useBackendHealth } from "./hooks/useBackendHealth";
 
-const pillars = [
+const highlights = [
   {
-    title: "Live market context",
-    description:
-      "QuantShield screens the live NIFTY universe, combines market regime checks, and refreshes recommendations on demand.",
+    title: "Market check",
+    detail: "Live posture, confidence, and risk framing",
     icon: TrendingUp,
   },
   {
-    title: "Transparent methodology",
-    description:
-      "Every recommendation is paired with allocation logic, risk scoring, portfolio evaluation, and explainability outputs.",
-    icon: BrainCircuit,
+    title: "Mix review",
+    detail: "Allocation, returns, and portfolio balance in one flow",
+    icon: Radar,
   },
   {
-    title: "Decision-grade framing",
-    description:
-      "The interface highlights assumptions, data freshness, and scenario comparisons so results can be reviewed with discipline.",
+    title: "Risk clarity",
+    detail: "Readable signals without raw-model noise",
     icon: ShieldCheck,
   },
 ];
 
-const highlights = [
-  "Live NIFTY 50 screening and allocation",
-  "Risk preference aware portfolio construction",
-  "Explainability and scenario analysis views",
-  "Clear investor disclaimer and market freshness",
+const sideNotes = [
+  {
+    title: "Grounded market context",
+    description: "Live market tone and benchmark signals before allocation.",
+    icon: TrendingUp,
+  },
+  {
+    title: "Readable reasoning",
+    description: "Allocation, returns, and volatility in plain language.",
+    icon: Radar,
+  },
+  {
+    title: "Calmer decision support",
+    description: "Freshness, assumptions, and planning without hype.",
+    icon: ShieldCheck,
+  },
 ];
 
-// ✅ ENV BASED URL
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-
 export default function Home() {
-  const [backendStatus, setBackendStatus] = useState<
-    "checking" | "online" | "offline"
-  >("checking");
-
-  const [backendVersion, setBackendVersion] = useState("");
-
-  useEffect(() => {
-    const checkBackend = async (retries = 3) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-        const res = await fetch(`${API_BASE}/health`, {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!res.ok) throw new Error();
-
-        const data = await res.json();
-
-        if (data.status === "healthy") {
-          setBackendStatus("online");
-          setBackendVersion(data.version || "");
-          return;
-        }
-
-        throw new Error();
-      } catch {
-        if (retries > 0) {
-          setTimeout(() => checkBackend(retries - 1), 1500);
-        } else {
-          setBackendStatus("offline");
-        }
-      }
-    };
-
-    checkBackend();
-  }, []);
+  const { state: backendStatus, version: backendVersion } = useBackendHealth();
 
   return (
-    <main className="hero-page min-h-screen px-5 py-8 text-white md:px-8 lg:px-12">
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-10">
-        
-        {/* TOP BADGE */}
-        <div className="flex flex-col gap-4 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 md:w-fit md:flex-row md:items-center">
-          <span className="inline-flex items-center gap-2">
-            <BadgeCheck size={16} className="text-emerald-300" />
-            AI-assisted portfolio analysis platform
-          </span>
-          <span className="text-slate-400">
-            Built for disciplined recommendation review, not blind auto-investing.
-          </span>
-        </div>
+    <main className="hero-page px-5 py-4 text-white md:px-8 md:py-5 lg:px-12">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+        <header className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="rounded-[1.35rem] border border-white/10 bg-slate-950/60 p-2 shadow-lg shadow-cyan-950/20">
+              <Image
+                src="/quantshield-logo.svg"
+                alt="QuantShield AI logo"
+                width={54}
+                height={54}
+                priority
+              />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
+                QuantShield AI
+              </p>
+              <h1 className="mt-1 text-lg font-semibold text-white md:text-xl">
+                Clean and Straight Forward Portfolio Guidance
+              </h1>
+            </div>
+          </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          
-          {/* LEFT */}
+          <div className="hidden rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 lg:flex lg:items-center lg:gap-3">
+            <BadgeCheck size={16} className="text-emerald-300" />
+            Portfolio planning workspace
+          </div>
+        </header>
+
+        <div className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
           <div>
-            <p className="text-sm uppercase tracking-[0.28em] text-cyan-300/80">
+            <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/80">
               QuantShield AI
             </p>
 
-            <h1 className="mt-4 max-w-4xl text-5xl font-semibold tracking-tight text-white md:text-6xl">
-              A more credible front door for AI-assisted portfolio recommendations.
+            <h1 className="mt-2 max-w-4xl text-4xl font-semibold tracking-tight text-white md:text-5xl xl:text-[4rem] xl:leading-[0.95]">
+              Clean and Straight Forward Portfolio Guidance
             </h1>
 
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              QuantShield combines live market signals, risk-aware screening, and
-              explainable allocation outputs so users can review recommendations with
-              the context a legitimate fintech product should provide.
+            <p className="mt-4 max-w-xl text-base leading-7 text-slate-300 md:text-lg">
+              Check the market. Review the mix. Understand the risk.
             </p>
 
-            {/* BUTTONS */}
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/login"
-                className="primary-cta inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-base font-semibold"
-              >
-                Login / Sign Up
-                <ArrowRight size={18} />
-              </Link>
-
-              <Link
-                href={backendStatus === "online" ? "/investment" : "#"}
-                className={`secondary-cta inline-flex items-center justify-center rounded-full px-6 py-3 text-base font-semibold ${
-                  backendStatus !== "online"
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
+                href="/investment"
+                className={`primary-cta inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-base font-semibold ${
+                  backendStatus === "offline" ? "opacity-50" : ""
                 }`}
               >
                 {backendStatus === "online"
-                  ? "Skip to Analysis"
+                  ? "Go to Analysis"
                   : backendStatus === "checking"
                   ? "Checking backend..."
-                  : "Backend Offline"}
+                  : "Proceed anyway"}
+                <ChevronRight size={18} />
               </Link>
             </div>
 
-            {/* HIGHLIGHTS */}
-            <div className="mt-8 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
+            <div className="mt-5 grid gap-3 text-sm text-slate-300 md:grid-cols-3">
               {highlights.map((item) => (
-                <div key={item} className="glass-panel rounded-2xl px-4 py-3">
-                  {item}
+                <div key={item.title} className="glass-panel rounded-[1.45rem] p-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-cyan-400/10 p-2.5 text-cyan-200">
+                      <item.icon size={18} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white">{item.title}</p>
+                      <p className="mt-1 text-xs leading-4.5 text-slate-400">{item.detail}</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* RIGHT CARD */}
-          <div className="hero-card rounded-[2rem] border border-white/10 p-6 shadow-2xl shadow-cyan-950/30">
-            
+          <div className="hero-card rounded-[2rem] border border-white/10 p-4.5 shadow-2xl shadow-cyan-950/30">
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.25em] text-slate-400">
               <span>System posture</span>
 
@@ -178,43 +148,41 @@ export default function Home() {
               </span>
             </div>
 
-            {/* VERSION DISPLAY */}
             {backendVersion && (
               <p className="mt-2 text-xs text-slate-500">
                 Backend v{backendVersion}
               </p>
             )}
 
-            <div className="mt-6 space-y-4">
-              {pillars.map((pillar) => {
-                const Icon = pillar.icon;
+            <div className="mt-4 space-y-3">
+              {sideNotes.map((item) => {
+                const Icon = item.icon;
 
                 return (
                   <div
-                    key={pillar.title}
-                    className="rounded-3xl border border-white/10 bg-slate-950/60 p-5"
+                    key={item.title}
+                    className="rounded-[1.45rem] border border-white/10 bg-slate-950/60 p-3.5"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="rounded-2xl bg-cyan-400/10 p-3 text-cyan-200">
-                        <Icon size={20} />
+                      <div className="rounded-2xl bg-cyan-400/10 p-2.5 text-cyan-200">
+                        <Icon size={18} />
                       </div>
-                      <h2 className="text-lg font-semibold text-white">
-                        {pillar.title}
+                      <h2 className="text-[15px] font-semibold text-white">
+                        {item.title}
                       </h2>
                     </div>
 
-                    <p className="mt-3 text-sm leading-6 text-slate-300">
-                      {pillar.description}
+                    <p className="mt-2 text-sm leading-5 text-slate-300">
+                      {item.description}
                     </p>
                   </div>
                 );
               })}
             </div>
 
-            <div className="mt-6 rounded-3xl border border-amber-400/20 bg-amber-400/10 p-5 text-sm leading-6 text-amber-100">
-              Recommendations are research support, not execution advice.
+            <div className="mt-4 rounded-3xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-5 text-amber-100">
+              Research support, not execution advice.
             </div>
-
           </div>
         </div>
       </section>

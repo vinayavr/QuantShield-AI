@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getStoredUser } from "../utils/utils";
+
 
 type SessionGuardProps = {
   children: React.ReactNode;
@@ -15,7 +15,14 @@ export default function SessionGuard({ children }: SessionGuardProps) {
 
   useEffect(() => {
     try {
-      const user = getStoredUser();
+      let user = null;
+
+try {
+  const stored = localStorage.getItem("user");
+  user = stored ? JSON.parse(stored) : null;
+} catch {
+  user = null;
+}
 
       if (!user) {
         router.replace(

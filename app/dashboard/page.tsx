@@ -1,27 +1,24 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import MetricCard from "../components/MetricCard";
 import SessionGuard from "../components/SessionGuard";
 import NoDataState from "../components/NoDataState";
 import Sidebar from "../components/Sidebar";
-import type { RecommendResponse } from "../types/types";
+import { useStoredRecommendation } from "../hooks/useStoredRecommendation";
 import {
   formatGeneratedAt,
   formatRupees,
+  getConfidenceDisplay,
   getDataStatus,
-  getStoredInvestmentData,
+  getSummaryHeadline,
 } from "../utils/utils";
 
 const COLORS = ["#60a5fa", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee"];
 
 export default function Dashboard() {
-  const [data, setData] = useState<RecommendResponse | null>(null);
-
-  useEffect(() => {
-    setData(getStoredInvestmentData());
-  }, []);
+  const { data, hydrated } = useStoredRecommendation();
 
   const allocation = useMemo(
     () => data?.investment_plan?.recommended_allocation ?? [],
@@ -59,6 +56,21 @@ export default function Dashboard() {
     return max > 0 ? max : 1;
   }, [allocation]);
 
+  if (!hydrated) {
+    return (
+      <SessionGuard>
+        <main className="page-shell text-white md:flex">
+          <Sidebar active="/dashboard" />
+          <section className="flex-1 p-5 md:p-6 lg:p-8">
+            <div className="section-surface rounded-[1.75rem] p-6 text-slate-300">
+              Loading saved recommendation...
+            </div>
+          </section>
+        </main>
+      </SessionGuard>
+    );
+  }
+
   if (!data) {
     return (
       <NoDataState
@@ -69,13 +81,14 @@ export default function Dashboard() {
   }
 
   const dataStatus = getDataStatus(data);
+  const selectedCount = data.metadata?.selected_stocks_count ?? allocation.length;
 
   return (
     <SessionGuard>
-      <main className="page-shell min-h-screen text-white md:flex">
+      <main className="page-shell text-white md:flex">
         <Sidebar active="/dashboard" />
 
-        <section className="flex-1 p-6 md:p-10">
+        <section className="flex-1 p-5 md:p-6 lg:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-3xl font-bold">Investment Dashboard</h1>
@@ -89,21 +102,97 @@ export default function Dashboard() {
                 {dataStatus.label}
               </span>
               <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-slate-200">
-                {data.metadata?.selected_stocks_count ?? allocation.length} stocks selected
+                {selectedCount} stocks selected
               </span>
             </div>
           </div>
 
-          <div className="section-surface mt-6 rounded-[1.75rem] p-6">
-            <p className="text-sm font-semibold text-white">Portfolio brief</p>
-            <p className="mt-2 max-w-3xl text-sm text-slate-300">
-              {data.summary?.headline ?? "No summary available"}
-            </p>
+          <div className="section-surface mt-6 rounded-[2rem] p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-sm font-semibold text-white">Portfolio brief</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  {getSummaryHeadline(data)}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3 text-sm">
+                <span className="rounded-full border border-white/10 bg-slate-950/55 px-4 py-2 text-slate-200">
+                  Best fit: {data.investment_plan?.best_company ?? "Portfolio mix"}
+                </span>
+                <span className="rounded-full border border-white/10 bg-slate-950/55 px-4 py-2 text-slate-300">
+                  Generated {formatGeneratedAt(data.generated_at)}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="section-surface-strong mt-6 overflow-hidden rounded-[2rem] p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs uppercase tracking-[0.24em] text-cyan-300/80">
+                  Portfolio Evaluation
+                </p>
+                <h2 className="mt-3 text-3xl font-semibold text-white">
+                  Snapshot for this recommendation
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  Return, risk, and diversification in one quick view.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:w-[360px]">
+                <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-emerald-200/80">
+                    Expected Return
+                  </p>
+                  <p className="mt-3 text-3xl font-semibold text-emerald-100">
+                    {data.evaluation?.expected_return_pct?.toFixed(2) ?? "0.00"}%
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-cyan-200/80">
+                    Volatility
+                  </p>
+                  <p className="mt-3 text-3xl font-semibold text-cyan-100">
+                    {data.evaluation?.volatility_pct?.toFixed(2) ?? "0.00"}%
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {data.evaluation && (
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <MetricCard
+                  label="Historical Mean Return"
+                  value={data.evaluation.expected_return_pct}
+                  type="percent"
+                />
+                <MetricCard
+                  label="Weighted CAGR"
+                  value={data.evaluation.cagr_return_pct ?? 0}
+                  type="percent"
+                />
+                <MetricCard
+                  label="Volatility"
+                  value={data.evaluation.volatility_pct}
+                  type="percent"
+                />
+                <MetricCard
+                  label="Sharpe-like Ratio"
+                  value={data.evaluation.sharpe_like_ratio}
+                />
+                <MetricCard
+                  label="Effective Holdings"
+                  value={data.evaluation.diversification_score}
+                  note="Calculated as 1 / sum(weight^2)."
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard label="Market Condition" value={data.summary?.market_condition ?? "N/A"} />
-            <MetricCard label="Confidence" value={data.summary?.confidence ?? "N/A"} />
+            <MetricCard label="Confidence" value={getConfidenceDisplay(data)} />
             <MetricCard
               label="Total Investment"
               value={data.investment_plan?.total_invested ?? 0}
@@ -117,7 +206,7 @@ export default function Dashboard() {
             />
           </div>
 
-          <div className="section-surface-strong mt-6 rounded-xl p-6">
+          <div className="section-surface-strong mt-5 rounded-xl p-5">
             <h3 className="mb-4 font-semibold">Stock Allocation</h3>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(280px,360px)_1fr] xl:items-start">
@@ -195,13 +284,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="section-surface mt-6 rounded-xl p-6">
+          <div className="section-surface mt-5 rounded-xl p-5">
             <h3 className="font-semibold">Return Comparison Chart</h3>
             <p className="mt-2 text-sm text-slate-400">
               Historical mean return and CAGR are shown side by side for the selected allocation.
             </p>
 
-            <div className="mt-6 grid gap-4">
+            <div className="mt-6 grid gap-4 xl:grid-cols-3">
               {allocation.map((item, index) => {
                 const meanValue = item.historical_mean_return ?? item.expected_return ?? 0;
                 const cagrValue = item.cagr_return ?? 0;
@@ -209,22 +298,29 @@ export default function Dashboard() {
                 return (
                   <div
                     key={item.company}
-                    className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
+                    className="rounded-[1.6rem] border border-white/10 bg-slate-950/60 p-5"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium text-slate-200">{item.company}</p>
-                      <p className="text-xs text-slate-400">Weight {item.weight}%</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xl font-semibold text-slate-100">{item.company}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
+                          Return profile
+                        </p>
+                      </div>
+                      <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                        Weight {item.weight}%
+                      </p>
                     </div>
 
-                    <div className="mt-4 grid gap-3">
+                    <div className="mt-5 grid gap-4">
                       <div>
-                        <div className="mb-1 flex items-center justify-between text-xs">
+                        <div className="mb-2 flex items-center justify-between text-xs">
                           <span className="text-slate-400">Historical Mean Return</span>
                           <span className="text-cyan-300">{meanValue}%</span>
                         </div>
-                        <div className="h-3 rounded-full bg-slate-900/80">
+                        <div className="h-3.5 rounded-full bg-slate-900/80">
                           <div
-                            className="h-3 rounded-full"
+                            className="h-3.5 rounded-full"
                             style={{
                               width: `${Math.max((meanValue / maxReturn) * 100, 4)}%`,
                               backgroundColor: COLORS[index % COLORS.length],
@@ -234,13 +330,13 @@ export default function Dashboard() {
                       </div>
 
                       <div>
-                        <div className="mb-1 flex items-center justify-between text-xs">
+                        <div className="mb-2 flex items-center justify-between text-xs">
                           <span className="text-slate-400">CAGR</span>
                           <span className="text-sky-300">{cagrValue}%</span>
                         </div>
-                        <div className="h-3 rounded-full bg-slate-900/80">
+                        <div className="h-3.5 rounded-full bg-slate-900/80">
                           <div
-                            className="h-3 rounded-full bg-sky-500/80"
+                            className="h-3.5 rounded-full bg-sky-500/80"
                             style={{
                               width: `${Math.max((cagrValue / maxReturn) * 100, 4)}%`,
                             }}
@@ -255,7 +351,7 @@ export default function Dashboard() {
           </div>
 
           {data.charts?.shap_summary && (
-            <div className="section-surface mt-6 rounded-xl p-6">
+            <div className="section-surface mt-5 rounded-xl p-5">
               <h3 className="font-semibold">Model Explainability (SHAP)</h3>
               <Image
                 src={`data:image/png;base64,${data.charts.shap_summary}`}
@@ -268,48 +364,22 @@ export default function Dashboard() {
             </div>
           )}
 
-          {data.evaluation && (
-            <div className="section-surface-strong mt-6 rounded-xl p-6">
-              <h3 className="font-semibold">Portfolio Evaluation</h3>
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-                <MetricCard
-                  label="Historical Mean Return"
-                  value={data.evaluation.expected_return_pct}
-                  type="percent"
-                />
-                <MetricCard
-                  label="Weighted CAGR"
-                  value={data.evaluation.cagr_return_pct ?? 0}
-                  type="percent"
-                />
-                <MetricCard
-                  label="Volatility"
-                  value={data.evaluation.volatility_pct}
-                  type="percent"
-                />
-                <MetricCard
-                  label="Sharpe-like Ratio"
-                  value={data.evaluation.sharpe_like_ratio}
-                />
-                <MetricCard
-                  label="Effective Holdings"
-                  value={data.evaluation.diversification_score}
-                  note="Calculated as 1 / sum(weight^2)."
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="section-surface-strong mt-6 rounded-xl p-6">
+            <div className="section-surface-strong mt-5 rounded-xl p-5">
             <h3 className="font-semibold">Recommended Action</h3>
             <p className="mt-2 text-slate-300">
               {data.what_to_do?.recommended_action ?? "No recommendation available"}
             </p>
           </div>
 
-          <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-5">
+          <div className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
             <h3 className="font-semibold text-red-200">Disclaimer</h3>
-            <p className="mt-2 text-sm text-slate-200">{data.note}</p>
+            <p className="mt-2 text-sm text-slate-200">
+              {typeof data.note === "string"
+                ? data.note
+                : data.note
+                ? JSON.stringify(data.note)
+                : "No notes available"}
+            </p>
 
             {data.sip && (
               <p className="mt-2 text-sm text-slate-300">

@@ -16,6 +16,8 @@ import {
   getApiBaseUrl,
   getFriendlyApiErrorMessage,
   getStoredUser,
+  safeJsonParse,
+  storeInvestmentData,
 } from "../utils/utils";
 
 const RISK_HELPERS: Record<RiskPreference, string> = {
@@ -24,10 +26,10 @@ const RISK_HELPERS: Record<RiskPreference, string> = {
   high: "Accepts higher volatility and more cyclical exposures in search of upside.",
 };
 
-const checklist = [
-  "Live universe screening from NIFTY constituents",
-  "Portfolio construction constrained by risk preference",
-  "Explainability, scenario review, and allocation breakdown",
+const CHECKLIST = [
+  "Monthly investment planning based on your horizon",
+  "Live market and benchmark-aware allocation",
+  "Readable return, volatility, and stock-level reasoning",
 ];
 
 export default function InvestmentPage() {
@@ -37,7 +39,6 @@ export default function InvestmentPage() {
   const {
     state: backendState,
     version: backendVersion,
-    isOnline,
     isChecking,
     isOffline,
     refresh,
@@ -55,7 +56,6 @@ export default function InvestmentPage() {
     const parsedTimeValue = Number(timeValue);
     setError("");
 
-    // ✅ VALIDATION
     if (!Number.isFinite(parsedAmount) || parsedAmount < 5000) {
       setError("Enter an investment amount of at least INR 5,000.");
       return;
@@ -66,8 +66,8 @@ export default function InvestmentPage() {
       return;
     }
 
-    if (!isOnline) {
-      setError("Backend service is not available yet. Start FastAPI server and retry.");
+    if (isOffline) {
+      setError("Backend unreachable. Try again.");
       return;
     }
 
@@ -87,187 +87,159 @@ export default function InvestmentPage() {
         body: JSON.stringify(payload),
       });
 
-      // ✅ HANDLE BACKEND ERRORS PROPERLY
+      const parsed = await safeJsonParse(response);
+
       if (!response.ok) {
-        let message = "Backend request failed.";
-
-        try {
-          const err = await response.json();
-          message = err?.detail || message;
-        } catch {
-          const text = await response.text();
-          if (text) message = text;
-        }
-
-        throw new Error(message);
+        throw new Error(
+          getFriendlyApiErrorMessage(parsed) ||
+            "Backend request failed."
+        );
       }
 
-      const recommendation = (await response.json()) as RecommendResponse;
+      const recommendation = parsed as RecommendResponse;
 
-      // ✅ STRICT VALIDATION (CRITICAL FIX)
       if (
         !recommendation ||
         !recommendation.investment_plan ||
         !Array.isArray(recommendation.investment_plan.recommended_allocation) ||
         recommendation.investment_plan.recommended_allocation.length === 0
       ) {
-        throw new Error(
-          "No valid portfolio generated. Market data fetch may have failed. Retry."
-        );
+        throw new Error("No portfolio generated. Retry.");
       }
 
-      // ✅ SAVE DATA
-      localStorage.setItem("investmentData", JSON.stringify(recommendation));
-
-      // ✅ NAVIGATE
+      storeInvestmentData(recommendation);
       router.push("/dashboard");
-
     } catch (err) {
       let msg = getFriendlyApiErrorMessage(err);
 
-      // ✅ SMART ERROR MAPPING
-      if (msg.includes("Market fetch failed")) {
-        msg = "Live market data unavailable (NIFTY / VIX issue). Retry.";
+      if (msg.includes("Market")) {
+        msg = "Live market data is unavailable right now. Please retry in a moment.";
       }
 
-      if (msg.includes("Insufficient")) {
-        msg = "Not enough market data. Try again.";
-      }
-
-      if (msg.includes("date datatypes")) {
-        msg = "Internal data merge error fixed. Restart backend and retry.";
-      }
-
-      setError(msg);
+      setError(msg || "Something went wrong");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ FIXED ENTER KEY (NO DOUBLE TRIGGER)
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
   return (
     <SessionGuard>
-      <main className="page-shell min-h-screen px-5 py-8 text-white md:px-8 lg:px-12">
-        <section className="mx-auto grid w-full max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-
-          {/* LEFT PANEL */}
-          <div className="section-surface rounded-[2rem] p-8">
-            <p className="text-sm uppercase tracking-[0.25em] text-cyan-300/80">
-              Analysis setup
+      <main className="page-shell px-5 py-4 text-white md:px-8 md:py-5 lg:px-12">
+        <section className="mx-auto grid w-full max-w-6xl gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+          <div className="section-surface rounded-[2rem] p-5 lg:p-6">
+            <p className="text-sm uppercase tracking-[0.24em] text-cyan-300/80">
+              Planning inputs
             </p>
-
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight">
-              Configure a review-grade portfolio recommendation.
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight lg:text-[2rem]">
+              Start with your real plan, not a generic AI prompt.
             </h1>
-
-            <p className="mt-4 text-base leading-7 text-slate-300">
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 lg:text-[15px]">
               {user?.name
-                ? `Welcome back, ${user.name}.`
-                : "Complete the analysis inputs below."}
+                ? `Welcome back, ${user.name}. Set the amount, horizon, and risk comfort level you actually want to invest with, and QuantShield will turn that into a reviewable plan.`
+                : "Set the amount, horizon, and risk comfort level you actually want to invest with, and QuantShield will turn that into a reviewable plan."}
             </p>
 
-            <div className="mt-8 grid gap-4">
-              {checklist.map((item) => (
-                <div key={item} className="rounded-3xl border border-white/10 bg-slate-950/55 px-4 py-4 text-sm text-slate-200">
+            <div className="mt-5 grid gap-2.5">
+              {CHECKLIST.map((item) => (
+                <div
+                  key={item}
+                  className="rounded-3xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm text-slate-200"
+                >
                   {item}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* RIGHT PANEL */}
-          <div className="section-surface-strong rounded-[2rem] p-8">
-
-            <div className="flex justify-between">
-              <h2 className="text-2xl font-semibold">Portfolio mandate</h2>
+          <div className="section-surface-strong rounded-[2rem] p-5 lg:p-6">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold">Investment Analysis</h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  Build a portfolio recommendation you can actually read and review.
+                </p>
+              </div>
               <BackendStatus state={backendState} version={backendVersion} />
             </div>
 
             {error && (
-              <div className="mt-6 rounded-3xl border border-rose-400/25 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+              <div className="mb-4 rounded-3xl border border-rose-400/25 bg-rose-400/10 p-4 text-sm text-rose-200">
                 {error}
               </div>
             )}
 
             {isOffline && (
-              <div className="mt-6 text-amber-200">
-                Backend offline.
+              <div className="mb-4 text-yellow-300">
+                Backend unreachable.
                 <button onClick={refresh} className="ml-2 underline">
                   Retry
                 </button>
               </div>
             )}
 
-            <div className="mt-8 space-y-6" onKeyDown={handleKeyDown}>
+            {isChecking && <div className="mb-4 text-yellow-200">Checking backend...</div>}
 
-              {/* AMOUNT */}
-              <input
-                type="number"
-                placeholder="Amount (min ₹5000)"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full p-3 bg-slate-900 rounded"
-              />
-
-              {/* TIME */}
-              <input
-                type="number"
-                value={timeValue}
-                onChange={(e) => setTimeValue(e.target.value)}
-                className="w-full p-3 bg-slate-900 rounded"
-              />
-
-              {/* UNIT (ADDED – IMPORTANT FIX) */}
-              <select
-                value={timeUnit}
-                onChange={(e) => setTimeUnit(e.target.value as TimeUnit)}
-                className="w-full p-3 bg-slate-900 rounded"
-              >
-                <option value="months">Months</option>
-                <option value="years">Years</option>
-              </select>
-
-              {/* RISK */}
-              <div className="flex gap-4">
-                {(["low", "medium", "high"] as RiskPreference[]).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRisk(r)}
-                    className={`p-3 rounded ${
-                      risk === r ? "bg-cyan-500" : "bg-slate-800"
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-sm text-slate-300">Amount to invest</label>
+                <input
+                  type="number"
+                  placeholder="Investment amount"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full rounded-2xl bg-slate-800 px-4 py-2.5"
+                />
               </div>
 
-              {/* RISK HELPER TEXT */}
-              <p className="text-xs text-slate-400">
-                {RISK_HELPERS[risk]}
-              </p>
+              <div>
+                <label className="mb-1.5 block text-sm text-slate-300">Time horizon</label>
+                <input
+                  type="number"
+                  value={timeValue}
+                  onChange={(e) => setTimeValue(e.target.value)}
+                  className="w-full rounded-2xl bg-slate-800 px-4 py-2.5"
+                />
+              </div>
 
+              <div>
+                <label className="mb-1.5 block text-sm text-slate-300">Horizon unit</label>
+                <select
+                  value={timeUnit}
+                  onChange={(e) => setTimeUnit(e.target.value as TimeUnit)}
+                  className="w-full rounded-2xl bg-slate-800 px-4 py-2.5"
+                >
+                  <option value="months">Months</option>
+                  <option value="years">Years</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-slate-300">Risk preference</label>
+                <div className="flex gap-3">
+                  {(["low", "medium", "high"] as RiskPreference[]).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRisk(r)}
+                      className={`rounded-2xl px-4 py-2.5 ${
+                        risk === r ? "bg-cyan-500 text-slate-950" : "bg-slate-700"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-400">{RISK_HELPERS[risk]}</p>
             </div>
 
             <button
               onClick={handleSubmit}
-              disabled={loading || isOffline || isChecking}
-              className="primary-cta mt-8 w-full"
+              disabled={loading}
+              className="primary-cta mt-5 w-full rounded-2xl py-2.5 font-semibold"
             >
-              {loading
-                ? "Running..."
-                : isChecking
-                ? "Checking backend..."
-                : "Generate recommendation"}
+              {loading ? "Running..." : isChecking ? "Checking backend..." : "Generate recommendation"}
             </button>
-
           </div>
         </section>
       </main>

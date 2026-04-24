@@ -1,26 +1,38 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import MetricCard from "../components/MetricCard";
 import NoDataState from "../components/NoDataState";
 import SessionGuard from "../components/SessionGuard";
 import Sidebar from "../components/Sidebar";
-import type { RecommendResponse } from "../types/types";
+import { useStoredRecommendation } from "../hooks/useStoredRecommendation";
 import {
   formatGeneratedAt,
+  formatPercent,
+  getAllocationAnalysisLines,
+  getConfidenceDisplay,
   getDataStatus,
-  getStoredInvestmentData,
+  getDecisionHighlights,
 } from "../utils/utils";
 
 export default function Explanation() {
-  const [data, setData] = useState<RecommendResponse | null>(null);
-
-  useEffect(() => {
-    setData(getStoredInvestmentData());
-  }, []);
-
+  const { data, hydrated } = useStoredRecommendation();
   const allocation = data?.investment_plan?.recommended_allocation ?? [];
+
+  if (!hydrated) {
+    return (
+      <SessionGuard>
+        <main className="page-shell text-white md:flex">
+          <Sidebar active="/explanation" />
+          <section className="flex-1 px-5 py-5 md:p-6 lg:p-8">
+            <div className="section-surface rounded-[1.75rem] p-6 text-slate-300">
+              Loading saved recommendation...
+            </div>
+          </section>
+        </main>
+      </SessionGuard>
+    );
+  }
 
   if (!data || allocation.length === 0) {
     return (
@@ -32,16 +44,19 @@ export default function Explanation() {
   }
 
   const dataStatus = getDataStatus(data);
+  const whyThisDecision = getDecisionHighlights(data);
+  const stockAnalysisLines = data.stock_analysis?.length
+    ? data.stock_analysis
+    : getAllocationAnalysisLines(allocation);
 
   return (
     <SessionGuard>
-      <main className="page-shell min-h-screen text-white md:flex">
+      <main className="page-shell text-white md:flex">
         <Sidebar active="/explanation" />
 
-        <section className="flex-1 px-5 py-8 md:p-10">
+        <section className="flex-1 px-5 py-5 md:p-6 lg:p-8">
           <h1 className="text-3xl font-bold">Model Explainability</h1>
 
-          {/* STATUS */}
           <div className="mt-4 flex flex-wrap gap-3 text-sm">
             <span className={`rounded-full border px-3 py-1 ${dataStatus.tone}`}>
               {dataStatus.label}
@@ -51,15 +66,14 @@ export default function Explanation() {
             </span>
           </div>
 
-          {/* METRICS */}
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             <MetricCard
               label="Portfolio Volatility"
               value={data.evaluation?.volatility_pct ?? data.risk_score ?? 0}
               type="percent"
               note={data.risk_score_basis}
             />
-            <MetricCard label="Confidence" value={data.summary?.confidence ?? "N/A"} />
+            <MetricCard label="Confidence" value={getConfidenceDisplay(data)} />
             <MetricCard
               label="Total Investment"
               value={data.investment_plan?.total_invested ?? 0}
@@ -67,25 +81,31 @@ export default function Explanation() {
             />
           </div>
 
-          {/* WHY */}
-          <section className="section-surface mt-6 rounded-[1.75rem] p-6">
+          <section className="section-surface mt-5 rounded-[1.75rem] p-5">
             <h2 className="font-semibold">Why This Decision?</h2>
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-300">
-              {(data.why_this_decision ?? []).map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
+            {whyThisDecision.length > 0 ? (
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-300">
+                {whyThisDecision.map((item, i) => (
+                  <li key={`${item}-${i}`}>{item}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-slate-400">
+                No model rationale was returned for this recommendation.
+              </p>
+            )}
           </section>
 
-          {/* STOCKS */}
-          <section className="section-surface-strong mt-6 rounded-[1.75rem] p-6">
+          <section className="section-surface-strong mt-5 rounded-[1.75rem] p-5">
             <h2 className="font-semibold">Stock Analysis</h2>
 
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-300">
-              {(data.stock_analysis ?? []).map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
+            {stockAnalysisLines.length > 0 ? (
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-300">
+                {stockAnalysisLines.map((item, i) => (
+                  <li key={`${item}-${i}`}>{item}</li>
+                ))}
+              </ul>
+            ) : null}
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               {allocation.map((item) => (
@@ -98,10 +118,10 @@ export default function Explanation() {
                     Risk Band: {item.stock_risk_level ?? "n/a"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Annualized Volatility: {item.stock_risk_score ?? "n/a"}%
+                    Annualized Volatility: {formatPercent(item.stock_risk_score)}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Trailing 1Y Return: {item.trailing_one_year_return ?? "n/a"}%
+                    Trailing 1Y Return: {formatPercent(item.trailing_one_year_return)}
                   </p>
                   <p className="text-xs text-slate-500">
                     Beta vs NIFTY 50: {item.market_beta ?? "n/a"}
@@ -114,9 +134,8 @@ export default function Explanation() {
             </div>
           </section>
 
-          {/* SHAP */}
           {(data.shap_plot || data.charts?.shap_summary) && (
-            <section className="section-surface mt-6 rounded-[1.75rem] p-6">
+            <section className="section-surface mt-5 rounded-[1.75rem] p-5">
               <h2 className="font-semibold">Model Explainability (SHAP)</h2>
 
               <Image
@@ -134,9 +153,8 @@ export default function Explanation() {
             </section>
           )}
 
-          {/* PORTFOLIO */}
           {(data.portfolio_chart || data.charts?.efficient_frontier) && (
-            <section className="section-surface mt-6 rounded-[1.75rem] p-6">
+            <section className="section-surface mt-5 rounded-[1.75rem] p-5">
               <h2 className="font-semibold">Portfolio Allocation</h2>
 
               <Image
@@ -154,29 +172,25 @@ export default function Explanation() {
             </section>
           )}
 
-          {/* RISK */}
           {data.portfolio_risk_contribution && (
-            <section className="section-surface-strong mt-6 rounded-[1.75rem] p-6">
+            <section className="section-surface-strong mt-5 rounded-[1.75rem] p-5">
               <h2 className="font-semibold">Risk Contribution</h2>
 
               <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
-                {Object.entries(data.portfolio_risk_contribution).map(
-                  ([stock, value]) => (
-                    <div
-                      key={stock}
-                      className="rounded-2xl border border-white/10 bg-slate-950/75 p-3"
-                    >
-                      <p className="text-sm text-slate-400">{stock}</p>
-                      <p className="font-bold text-yellow-400">{value}%</p>
-                    </div>
-                  )
-                )}
+                {Object.entries(data.portfolio_risk_contribution).map(([stock, value]) => (
+                  <div
+                    key={stock}
+                    className="rounded-2xl border border-white/10 bg-slate-950/75 p-3"
+                  >
+                    <p className="text-sm text-slate-400">{stock}</p>
+                    <p className="font-bold text-yellow-400">{value}%</p>
+                  </div>
+                ))}
               </div>
             </section>
           )}
 
-          {/* NOTES */}
-          <section className="section-surface mt-6 rounded-[1.75rem] p-6">
+          <section className="section-surface mt-5 rounded-[1.75rem] p-5">
             <h2 className="font-semibold">Data & Model Notes</h2>
 
             <div className="mt-3 space-y-2 text-sm text-slate-300">

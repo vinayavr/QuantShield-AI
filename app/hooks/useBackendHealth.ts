@@ -1,71 +1,58 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchWithTimeout, getApiBaseUrl } from "../utils/utils";
-
-type HealthResponse = {
-  status?: string;
-  version?: string;
-};
+import { fetchWithTimeout, getApiBaseUrl, safeJsonParse } from "../utils/utils";
 
 export type BackendHealthState = "checking" | "online" | "offline";
 
 export function useBackendHealth() {
   const [state, setState] = useState<BackendHealthState>("checking");
   const [version, setVersion] = useState("");
+  const failCountRef = useRef(0);
+  const apiBaseUrl = getApiBaseUrl();
 
-  // ✅ FIX: use browser-safe type
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const checkHealth = useCallback(async () => {
+  const check = useCallback(async () => {
     try {
-      const response = await fetchWithTimeout(
-        `${getApiBaseUrl()}/health`,
-        {
-          method: "GET",
-          cache: "no-store",
-        },
-        5000 // ⏱️ timeout
+      const res = await fetchWithTimeout(
+        `${apiBaseUrl}/health`,
+        { cache: "no-store" },
+        4000
       );
 
-      if (!response.ok) throw new Error("Health check failed");
+      if (!res.ok) throw new Error();
 
-      const payload = (await response.json()) as HealthResponse;
+      const data = (await safeJsonParse(res)) as
+        | { status?: string; version?: string }
+        | null;
 
-      if (payload.status === "healthy") {
+      if (data?.status === "ok") {
+        failCountRef.current = 0;
         setState("online");
-        setVersion(payload.version ?? "");
+        setVersion(data?.version || "");
       } else {
-        setState("offline");
-        setVersion("");
+        throw new Error();
       }
     } catch {
-      setState("offline");
-      setVersion("");
+      failCountRef.current += 1;
+
+      if (failCountRef.current >= 3) {
+        setState("offline");
+      }
     }
-  }, []);
+  }, [apiBaseUrl]);
 
   useEffect(() => {
-    // 🔥 initial check
-    checkHealth();
-
-    // 🔁 polling every 10 seconds
-    intervalRef.current = setInterval(checkHealth, 10000);
-
-    // 🧹 cleanup
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [checkHealth]);
+    check();
+    const interval = setInterval(check, 4000);
+    return () => clearInterval(interval);
+  }, [check]);
 
   return {
     state,
     version,
-    refresh: checkHealth,
     isOnline: state === "online",
-    isChecking: state === "checking",
     isOffline: state === "offline",
+    isChecking: state === "checking",
+    refresh: check,
   };
 }

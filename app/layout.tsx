@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import "./globals.css";
 
@@ -76,8 +78,44 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="app-shell antialiased">
-        {children}
+      <body className="app-shell min-h-screen antialiased">
+        <div className="flex min-h-screen flex-col">
+          <header className="border-b border-white/8 bg-[#04141d]/88 backdrop-blur">
+            <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-3 md:px-8 lg:px-12">
+              <Link href="/" className="flex items-center gap-3">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-1.5 shadow-lg shadow-cyan-950/20">
+                  <Image
+                    src="/quantshield-logo.svg"
+                    alt="QuantShield AI logo"
+                    width={34}
+                    height={34}
+                    priority
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold tracking-[0.18em] text-cyan-300/90">
+                    QUANTSHIELD AI
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Portfolio intelligence workspace
+                  </p>
+                </div>
+              </Link>
+
+              <p className="hidden text-xs uppercase tracking-[0.22em] text-slate-500 md:block">
+                Clean portfolio review
+              </p>
+            </div>
+          </header>
+
+          <div className="flex-1">{children}</div>
+
+<footer className="border-t border-white/8 bg-[#04141d]/88 backdrop-blur">
+  <div className="mx-auto flex w-full max-w-7xl items-center justify-center px-5 py-3 text-xs text-slate-400 md:px-8 lg:px-12">
+    <p>© 2026 QuantShield AI. All rights reserved.</p>
+  </div>
+</footer>
+        </div>
       </body>
     </html>
   );

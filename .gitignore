@@ -1,6 +1,22 @@
+# Next.js
+.next/
+out/
+
+# Node
 node_modules/
-QuantShield-AI-backup/
-QuantShield-AI-backup-safe/
+
+# Python
+venv/
 __pycache__/
 *.pyc
+
+# Env
 .env.local
+
+# Logs / cache
+*.log
+*.gz
+
+# Backup folders
+QuantShield-AI-backup/
+QuantShield-AI-backup-safe/

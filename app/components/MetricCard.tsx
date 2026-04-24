@@ -19,6 +19,9 @@ export default function MetricCard({
 }: MetricCardProps) {
   const isValidNumber =
     typeof value === "number" && Number.isFinite(value);
+  const numericString =
+    typeof value === "string" ? Number.parseFloat(value.replace("%", "")) : NaN;
+  const hasNumericString = Number.isFinite(numericString);
 
   const formatValue = () => {
     if (value === null || value === undefined) return "--";
@@ -32,14 +35,22 @@ export default function MetricCard({
 
   const dynamicTone: Tone = (() => {
     const lowerLabel = label.toLowerCase();
+if (lowerLabel.includes("risk") && isValidNumber) {
+  const num = value as number;
 
-    if (lowerLabel.includes("risk") && isValidNumber) {
-      if (value >= 7) return "red";
-      if (value >= 4) return "yellow";
-      return "green";
-    }
+  if (num >= 7) return "red";
+  if (num >= 4) return "yellow";
+  return "green";
+}
 
     if (lowerLabel.includes("confidence")) {
+      if (isValidNumber || hasNumericString) {
+        const numericValue = isValidNumber ? (value as number) : numericString;
+        if (numericValue >= 75) return "green";
+        if (numericValue >= 45) return "yellow";
+        return "red";
+      }
+
       const text = String(value).toLowerCase();
       if (text.includes("high")) return "green";
       if (text.includes("medium")) return "yellow";

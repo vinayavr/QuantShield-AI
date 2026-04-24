@@ -96,11 +96,11 @@ export default function Login() {
   };
 
   return (
-    <main className="page-shell flex min-h-screen items-center justify-center px-5 py-8 text-white">
+    <main className="page-shell flex items-center justify-center px-5 py-5 text-white md:py-6">
       <section className="grid w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 shadow-2xl shadow-slate-950/40 lg:grid-cols-[0.95fr_1.05fr]">
 
         {/* LEFT PANEL */}
-        <div className="border-b border-white/10 p-8 lg:border-b-0 lg:border-r lg:p-10">
+        <div className="border-b border-white/10 p-6 lg:border-b-0 lg:border-r lg:p-8">
           <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs uppercase tracking-[0.25em] text-cyan-200">
             Login / Sign Up
           </span>
@@ -114,7 +114,7 @@ export default function Login() {
             application experience.
           </p>
 
-          <div className="mt-8 space-y-4">
+          <div className="mt-6 space-y-3">
             <div className="section-surface rounded-3xl p-5">
               <p className="text-sm font-semibold text-white">Why this matters</p>
               <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -132,7 +132,7 @@ export default function Login() {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="p-8 lg:p-10">
+        <div className="p-6 lg:p-8">
 
           {/* ICON CARDS */}
           <div className="grid gap-4 md:grid-cols-3">
@@ -153,7 +153,7 @@ export default function Login() {
           </div>
 
           {/* FORM */}
-          <div className="mt-8 space-y-5" onKeyDown={handleKeyDown}>
+          <div className="mt-6 space-y-4" onKeyDown={handleKeyDown}>
 
             <label className="block">
               <span className="text-sm text-slate-300">Reviewer name</span>
@@ -203,7 +203,7 @@ export default function Login() {
           <button
             onClick={handleStart}
             disabled={loading}
-            className="primary-cta mt-8 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-base font-semibold"
+            className="primary-cta mt-6 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-base font-semibold"
           >
             {loading ? "Signing in..." : "Continue"}
           </button>

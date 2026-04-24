@@ -1,27 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import MetricCard from "../components/MetricCard";
 import NoDataState from "../components/NoDataState";
 import SessionGuard from "../components/SessionGuard";
 import Sidebar from "../components/Sidebar";
-import type { RecommendResponse } from "../types/types";
+import { useStoredRecommendation } from "../hooks/useStoredRecommendation";
 import {
   formatGeneratedAt,
   formatRupees,
   getDataStatus,
-  getStoredInvestmentData,
 } from "../utils/utils";
 
 export default function Scenario() {
-  const [data, setData] = useState<RecommendResponse | null>(null);
-
-  useEffect(() => {
-    setData(getStoredInvestmentData());
-  }, []);
-
-  // ✅ SAFE CHECK
+  const { data, hydrated } = useStoredRecommendation();
   const allocation = data?.investment_plan?.recommended_allocation ?? [];
+
+  if (!hydrated) {
+    return (
+      <SessionGuard>
+        <main className="page-shell text-white md:flex">
+          <Sidebar active="/scenario" />
+          <section className="flex-1 px-5 py-5 md:p-6 lg:p-8">
+            <div className="section-surface rounded-[1.75rem] p-6 text-slate-300">
+              Loading saved recommendation...
+            </div>
+          </section>
+        </main>
+      </SessionGuard>
+    );
+  }
 
   if (!data || allocation.length === 0) {
     return (
@@ -32,20 +39,20 @@ export default function Scenario() {
     );
   }
 
-  // ✅ SAFE CALCULATIONS
-  const total = allocation.reduce((sum, item) => sum + (item.amount ?? 0), 0);
+  const total =
+    data.investment_plan?.total_invested ??
+    allocation.reduce((sum, item) => sum + (item.amount ?? 0), 0);
   const aggressiveTotal = Math.round(total * 1.2);
   const conservativeTotal = Math.round(total * 0.9);
   const regret = Math.abs(aggressiveTotal - total);
-
   const dataStatus = getDataStatus(data);
 
   return (
     <SessionGuard>
-      <main className="page-shell min-h-screen text-white md:flex">
+      <main className="page-shell text-white md:flex">
         <Sidebar active="/scenario" />
 
-        <section className="flex-1 px-5 py-8 md:p-10">
+        <section className="flex-1 px-5 py-5 md:p-6 lg:p-8">
           <h1 className="text-3xl font-bold">Scenario & Regret Analysis</h1>
 
           <div className="mt-4 flex flex-wrap gap-3 text-sm">
@@ -58,8 +65,7 @@ export default function Scenario() {
             </span>
           </div>
 
-          {/* METRICS */}
-          <div className="mt-8 grid gap-5 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
             <MetricCard
               label="Recommended Portfolio"
               value={total}
@@ -80,8 +86,7 @@ export default function Scenario() {
             />
           </div>
 
-          {/* REGRET */}
-          <section className="section-surface mt-6 rounded-[1.75rem] p-6">
+          <section className="section-surface mt-5 rounded-[1.75rem] p-5">
             <h2 className="font-semibold">Potential Regret</h2>
 
             <p className="mt-3 text-2xl font-bold text-orange-300">
@@ -93,7 +98,6 @@ export default function Scenario() {
               stress scenarios to make the risk trade-off easier to present.
             </p>
 
-            {/* ✅ SAFE OPTIONAL DATA */}
             {data.metadata?.market_snapshot && (
               <p className="mt-2 text-sm text-slate-400">
                 {data.metadata.market_snapshot}
@@ -107,8 +111,7 @@ export default function Scenario() {
             )}
           </section>
 
-          {/* PORTFOLIO */}
-          <section className="mt-6 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-6">
+          <section className="mt-5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-5">
             <h2 className="font-semibold">Portfolio Breakdown</h2>
 
             <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -131,9 +134,8 @@ export default function Scenario() {
             </div>
           </section>
 
-          {/* EVALUATION */}
           {data.evaluation && (
-            <section className="section-surface-strong mt-6 rounded-[1.75rem] p-6">
+            <section className="section-surface-strong mt-5 rounded-[1.75rem] p-5">
               <h2 className="font-semibold">Risk / Return Snapshot</h2>
 
               <div className="mt-4 grid gap-4 md:grid-cols-3">
