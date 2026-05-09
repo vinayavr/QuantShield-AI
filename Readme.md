@@ -73,5 +73,3 @@ QuantShield AI should be framed as a decision-support prototype. It provides por
 - perform KYC or suitability checks
 - replace licensed financial advice
 - guarantee outcomes
-
-That framing is important if you want the product to feel credible and industry-aware.
